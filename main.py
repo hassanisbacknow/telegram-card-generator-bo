@@ -152,7 +152,7 @@ async def gen_with_dot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     keep_alive()
     print("Bot is running...")
-    application = ApplicationBuilder().token("7654475659:AAG3iMw_nxgiGftx58A9AAsTQyOaUdKiv2c").build()
+    application = ApplicationBuilder().token("7654475659:AAHzvNFIP7aX3-r8iTYlGyxjMx5VTSZY12w").build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(MessageHandler(filters.Regex(r"^\.gen\s"), gen_with_dot))
