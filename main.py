@@ -21,6 +21,18 @@ def keep_alive():
     t = Thread(target=run_web)
     t.start()
 
+# Background pinger to keep app awake
+def ping_self():
+    import time
+    def loop():
+        while True:
+            try:
+                httpx.get("https://telegram-card-generator-bo.onrender.com", timeout=5)
+            except:
+                pass  # silently ignore errors
+            time.sleep(5)
+    Thread(target=loop, daemon=True).start()
+
 # --- Helper functions ---
 
 def escape_markdown_v2(text):
@@ -151,8 +163,9 @@ async def gen_with_dot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     keep_alive()
+    ping_self()  # background pinger
     print("Bot is running...")
-    application = ApplicationBuilder().token("7654475659:AAHzvNFIP7aX3-r8iTYlGyxjMx5VTSZY12w").build()
+    application = ApplicationBuilder().token("7654475659:AAH2WTlG5rKjhSpAio3XcF9yp4NJxCH3FUM").build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(MessageHandler(filters.Regex(r"^\.gen\s"), gen_with_dot))
