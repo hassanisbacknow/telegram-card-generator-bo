@@ -135,7 +135,7 @@ async def gen_with_dot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     keep_alive()  # Keeps Replit alive with UptimeRobot
     print("Bot is running...")
-    application = ApplicationBuilder().token("YOUR_BOT_TOKEN").build()
+    application = ApplicationBuilder().token("7654475659:AAG3iMw_nxgiGftx58A9AAsTQyOaUdKiv2c").build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(MessageHandler(filters.Regex(r"^\.gen\s"), gen_with_dot))
