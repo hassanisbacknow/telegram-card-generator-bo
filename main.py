@@ -69,8 +69,14 @@ def generate_expiry_date(mm_input, yy_input):
 
     return mm, yy
 
-def generate_cvv(cvv_input):
-    return ''.join(str(random.randint(0, 9)) if x == 'x' else x for x in cvv_input) or f"{random.randint(100, 999)}"
+def generate_cvv(cvv_input, bin_number):
+    if cvv_input.lower() != "rnd" and 'x' not in cvv_input:
+        return cvv_input  # Custom CVV provided by user
+    
+    # Determine length based on AMEX BIN
+    cvv_length = 4 if bin_number.startswith(('34', '37')) else 3
+
+    return ''.join(str(random.randint(0, 9)) for _ in range(cvv_length))
 
 # --- Telegram Handlers ---
 
@@ -105,7 +111,7 @@ async def process_gen_command(update: Update, user_input: str):
         for _ in range(quantity):
             card_number = generate_credit_card(bin_number)
             mm, yy = generate_expiry_date(mm_input, yy_input)
-            cvv = generate_cvv(cvv_input)
+            cvv = generate_cvv(cvv_input, bin_number)
             ccs.append(f"{card_number}|{mm}|{yy}|{cvv}")
 
         ccs_text = '\n'.join([f"`{cc}`" for cc in ccs])
