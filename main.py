@@ -1,11 +1,28 @@
 import random
 import httpx
+import re
+from flask import Flask
+from threading import Thread
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import re
+
+# Web server to keep Replit alive
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is online!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.start()
+
+# --- Helper functions ---
 
 def escape_markdown_v2(text):
-    """Escapes special characters for Telegram MarkdownV2 formatting."""
     escape_chars = r"\*_`()~>#+-=|{}.!"
     return re.sub(r"([" + re.escape(escape_chars) + r"])", r"\\\1", text)
 
@@ -43,10 +60,10 @@ def generate_expiry_date(mm_input, yy_input):
 
     yy = ''.join(str(random.randint(0, 9)) if x == 'x' else x for x in yy_input)
 
-    if not yy:  
-        yy = str(random.randint(26, 29))  # If yy is empty, generate a random year (2026-2029)
+    if not yy:
+        yy = str(random.randint(26, 29))
     elif len(yy) == 2:
-        yy = "20" + yy  # Convert two-digit year (e.g., "28") to full year (e.g., "2028")
+        yy = "20" + yy
     
     yy = str(random.randint(2026, 2029)) if int(yy) < 2026 or int(yy) > 2029 else yy
 
@@ -54,6 +71,8 @@ def generate_expiry_date(mm_input, yy_input):
 
 def generate_cvv(cvv_input):
     return ''.join(str(random.randint(0, 9)) if x == 'x' else x for x in cvv_input) or f"{random.randint(100, 999)}"
+
+# --- Telegram Handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Welcome to the Card Generator Bot!\n\n")
@@ -82,8 +101,6 @@ async def process_gen_command(update: Update, user_input: str):
             await update.message.reply_text("Max quantity is 100.")
             return
 
-        bin_details = (bin_number[:6])
-
         ccs = []
         for _ in range(quantity):
             card_number = generate_credit_card(bin_number)
@@ -98,7 +115,7 @@ async def process_gen_command(update: Update, user_input: str):
             f"{ccs_text}\n━━━━━━━━━━━━━━\n"
         )
         response += "\n*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑*: @hassanontelegram\n"
-        response += "*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*: @tricks\_era"
+        response += "*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*: @tricks\\_era"
 
         await update.message.reply_text(response, parse_mode="MarkdownV2")
     except Exception as e:
@@ -113,9 +130,12 @@ async def gen_with_dot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text[4:].strip()
     await process_gen_command(update, user_input)
 
+# --- Main ---
+
 def main():
+    keep_alive()  # Keeps Replit alive with UptimeRobot
     print("Bot is running...")
-    application = ApplicationBuilder().token("7757424009:AAH7CwEQDGxi5_DZ-7illbOvO0CK_uMOcXg").build()
+    application = ApplicationBuilder().token("YOUR_BOT_TOKEN").build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(MessageHandler(filters.Regex(r"^\.gen\s"), gen_with_dot))
