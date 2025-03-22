@@ -1,26 +1,27 @@
 import random
 import httpx
 import re
-import os
-from flask import Flask, request
+from flask import Flask
+from threading import Thread
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
 from telegram.error import Forbidden
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-# --- Configuration ---
-BOT_TOKEN = "7654475659:AAHzvNFIP7aX3-r8iTYlGyxjMx5VTSZY12w"
-WEBHOOK_URL = "https://telegram-card-generator-bo.onrender.com"
+# Web server to keep alive
+app = Flask('')
 
-# Flask app
-app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Bot is online!"
 
-# --- Helper Functions ---
+def run_web():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.start()
+
+# --- Helper functions ---
 
 def escape_markdown_v2(text):
     escape_chars = r"\*_`()~>#+-=|{}.!"
@@ -76,7 +77,7 @@ def generate_cvv(cvv_input, bin_number):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        await update.message.reply_text("Welcome to the Card Generator Bot!")
+        await update.message.reply_text("Welcome to the Card Generator Bot!\n\n")
     except Forbidden:
         print(f"User {update.effective_user.id} blocked the bot.")
 
@@ -94,7 +95,10 @@ async def process_gen_command(update: Update, user_input: str):
         cvv_input = "xxx" if len(parts) <= 3 or parts[3].strip().lower() == "rnd" else parts[3].strip()
 
         if not (len(bin_number) >= 6 and bin_number[:6].isdigit()):
-            await update.message.reply_text("Invalid BIN format.")
+            try:
+                await update.message.reply_text("Invalid BIN format.")
+            except Forbidden:
+                print(f"User {update.effective_user.id} blocked the bot.")
             return
 
         try:
@@ -102,7 +106,10 @@ async def process_gen_command(update: Update, user_input: str):
             if quantity <= 0 or quantity > 100:
                 raise ValueError()
         except ValueError:
-            await update.message.reply_text("Max quantity is 100.")
+            try:
+                await update.message.reply_text("Max quantity is 100.")
+            except Forbidden:
+                print(f"User {update.effective_user.id} blocked the bot.")
             return
 
         ccs = []
@@ -117,13 +124,20 @@ async def process_gen_command(update: Update, user_input: str):
             f"*𝐁𝐈𝐍* ⇾ {bin_number[:6]}\n"
             f"*𝐀𝐌𝐎𝐔𝐍𝐓* ⇾ {quantity}\n━━━━━━━━━━━━━━\n"
             f"{ccs_text}\n━━━━━━━━━━━━━━\n"
-            "\n*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑*: @hassanontelegram\n"
-            "*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*: @tricks\\_era"
         )
-        await update.message.reply_text(response, parse_mode="MarkdownV2")
+        response += "\n*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑*: @hassanontelegram\n"
+        response += "*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*: @tricks\\_era"
+
+        try:
+            await update.message.reply_text(response, parse_mode="MarkdownV2")
+        except Forbidden:
+            print(f"User {update.effective_user.id} blocked the bot.")
     except Exception as e:
         print(f"Error: {e}")
-        await update.message.reply_text("Invalid BIN.")
+        try:
+            await update.message.reply_text("Invalid BIN.")
+        except Forbidden:
+            print(f"User {update.effective_user.id} blocked the bot.")
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = ' '.join(context.args)
@@ -133,37 +147,16 @@ async def gen_with_dot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text[4:].strip()
     await process_gen_command(update, user_input)
 
-# --- App and Webhook Integration ---
-
-telegram_app: Application = Application.builder().token(BOT_TOKEN).build()
-telegram_app.add_handler(CommandHandler("start", start))
-telegram_app.add_handler(CommandHandler("gen", gen))
-telegram_app.add_handler(MessageHandler(filters.Regex(r"^\.gen\s"), gen_with_dot))
-
-@app.route('/')
-def index():
-    return "Bot is running with webhook!"
-
-@app.route('/webhook', methods=["POST"])
-async def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-        await telegram_app.process_update(update)
-        return "ok", 200
-
-# --- Startup (Webhook Set) ---
-
-async def set_webhook():
-    await telegram_app.bot.set_webhook(url=WEBHOOK_URL)
-    print("Webhook set!")
+# --- Main ---
 
 def main():
-    import asyncio
-    asyncio.run(set_webhook())
-
-    # Start Flask app
-    port = int(os.environ.get("PORT", 10000))  # Render uses PORT env var
-    app.run(host="0.0.0.0", port=port)
+    keep_alive()
+    print("Bot is running...")
+    application = ApplicationBuilder().token("7654475659:AAHzvNFIP7aX3-r8iTYlGyxjMx5VTSZY12w").build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("gen", gen))
+    application.add_handler(MessageHandler(filters.Regex(r"^\.gen\s"), gen_with_dot))
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
