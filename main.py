@@ -4,9 +4,10 @@ import re
 from flask import Flask
 from threading import Thread
 from telegram import Update
+from telegram.error import Forbidden
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-# Web server to keep Replit alive
+# Web server to keep alive
 app = Flask('')
 
 @app.route('/')
@@ -29,7 +30,6 @@ def escape_markdown_v2(text):
 def luhn_checksum(card_number):
     def digits_of(n):
         return [int(d) for d in str(n) if d.isdigit()]
-    
     digits = digits_of(card_number)
     odd_digits = digits[-1::-2]
     even_digits = digits[-2::-2]
@@ -59,29 +59,27 @@ def generate_expiry_date(mm_input, yy_input):
     mm = f"{random.randint(1, 12):02d}" if int(mm) < 1 or int(mm) > 12 else mm
 
     yy = ''.join(str(random.randint(0, 9)) if x == 'x' else x for x in yy_input)
-
     if not yy:
         yy = str(random.randint(26, 29))
     elif len(yy) == 2:
         yy = "20" + yy
-    
     yy = str(random.randint(2026, 2029)) if int(yy) < 2026 or int(yy) > 2029 else yy
 
     return mm, yy
 
 def generate_cvv(cvv_input, bin_number):
     if cvv_input.lower() != "rnd" and 'x' not in cvv_input:
-        return cvv_input  # Custom CVV provided by user
-    
-    # Determine length based on AMEX BIN
+        return cvv_input
     cvv_length = 4 if bin_number.startswith(('34', '37')) else 3
-
     return ''.join(str(random.randint(0, 9)) for _ in range(cvv_length))
 
 # --- Telegram Handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Welcome to the Card Generator Bot!\n\n")
+    try:
+        await update.message.reply_text("Welcome to the Card Generator Bot!\n\n")
+    except Forbidden:
+        print(f"User {update.effective_user.id} blocked the bot.")
 
 async def process_gen_command(update: Update, user_input: str):
     try:
@@ -97,14 +95,21 @@ async def process_gen_command(update: Update, user_input: str):
         cvv_input = "xxx" if len(parts) <= 3 or parts[3].strip().lower() == "rnd" else parts[3].strip()
 
         if not (len(bin_number) >= 6 and bin_number[:6].isdigit()):
-            await update.message.reply_text("Invalid BIN format.")
+            try:
+                await update.message.reply_text("Invalid BIN format.")
+            except Forbidden:
+                print(f"User {update.effective_user.id} blocked the bot.")
             return
+
         try:
             quantity = int(quantity_str)
             if quantity <= 0 or quantity > 100:
                 raise ValueError()
         except ValueError:
-            await update.message.reply_text("Max quantity is 100.")
+            try:
+                await update.message.reply_text("Max quantity is 100.")
+            except Forbidden:
+                print(f"User {update.effective_user.id} blocked the bot.")
             return
 
         ccs = []
@@ -123,10 +128,16 @@ async def process_gen_command(update: Update, user_input: str):
         response += "\n*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑*: @hassanontelegram\n"
         response += "*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*: @tricks\\_era"
 
-        await update.message.reply_text(response, parse_mode="MarkdownV2")
+        try:
+            await update.message.reply_text(response, parse_mode="MarkdownV2")
+        except Forbidden:
+            print(f"User {update.effective_user.id} blocked the bot.")
     except Exception as e:
         print(f"Error: {e}")
-        await update.message.reply_text("Invalid BIN.")
+        try:
+            await update.message.reply_text("Invalid BIN.")
+        except Forbidden:
+            print(f"User {update.effective_user.id} blocked the bot.")
 
 async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = ' '.join(context.args)
@@ -139,9 +150,9 @@ async def gen_with_dot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- Main ---
 
 def main():
-    keep_alive()  # Keeps Replit alive with UptimeRobot
+    keep_alive()
     print("Bot is running...")
-    application = ApplicationBuilder().token("7654475659:AAG3iMw_nxgiGftx58A9AAsTQyOaUdKiv2c").build()
+    application = ApplicationBuilder().token("YOUR_BOT_TOKEN_HERE").build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
     application.add_handler(MessageHandler(filters.Regex(r"^\.gen\s"), gen_with_dot))
