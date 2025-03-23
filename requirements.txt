@@ -2,4 +2,3 @@ flask
 httpx
 aiohttp
 python-telegram-bot==20.7
-pip install --upgrade pip
