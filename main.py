@@ -1,4 +1,4 @@
-import random2 as random
+import random
 import httpx
 import re
 import aiohttp
