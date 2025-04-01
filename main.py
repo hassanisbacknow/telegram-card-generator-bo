@@ -477,7 +477,7 @@ def main():
     ping_self()  # background pinger
     print("Bot is running...")
 
-    application = ApplicationBuilder().token("7654475659:AAG7tqw_Fa2K1tek-KopyVrKKzvSfUhRUkE").build()
+    application = ApplicationBuilder().token("7654475659:AAE5MXQJh000YPedVCuIfytO7sS7CfNKV2U").build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
