@@ -112,6 +112,10 @@ Phone Number:(In country code format)"""
 
 # Main bot launcher
 def main():
+    keep_alive()
+    ping_self()  # background pinger
+    print("Bot is running...")
+    
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
