@@ -2,10 +2,39 @@ import requests
 import random
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from flask import Flask
+from threading import Thread
+import httpx
 
 # Replace with your actual OpenAI and Telegram keys
 OPENAI_API_KEY = "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"  
 TELEGRAM_BOT_TOKEN = "7801028142:AAFxEdmw4EmpODgEStHmuLBn2puN3RqThBM"
+
+# Web server to keep alive
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is online!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.start()
+
+# Background pinger to keep app awake
+def ping_self():
+    import time
+    def loop():
+        while True:
+            try:
+                httpx.get("https://telegram-card-generator-bo-1.onrender.com", timeout=5)
+            except:
+                pass  # silently ignore errors
+            time.sleep(5)
+    Thread(target=loop, daemon=True).start()
 
 # SSN generator for USA
 def generate_luhn_valid_ssn():
