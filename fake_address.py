@@ -11,15 +11,15 @@ OPENAI_API_KEY = "sk-proj-2UchI0uze0kURkF606V0xr4DrHQBjDKl3DbhmxEjzgj8TEiP-7xdX1
 TELEGRAM_BOT_TOKEN = "7801028142:AAFXqLg_a8MFOen_XZ2dO306QqeZjKRO8CM"
 
 # Web server to keep alive
-app = Flask('')
+flask_app = Flask('')
 
-@app.route('/')
+@flask_app.route('/')
 def home():
     return "Bot is online!"
 
 def run_web():
-    app.run(host='0.0.0.0', port=8080)
-
+    flask_app.run(host='0.0.0.0', port=8080)
+    
 def keep_alive():
     t = Thread(target=run_web)
     t.start()
@@ -114,15 +114,17 @@ Phone Number:(In country code format)"""
 def main():
     keep_alive()
     ping_self()  # background pinger
-    print("Bot is running...")
-    
-    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    print("Bot is starting...")
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("fake", fake))
+    # Build the Telegram bot application
+    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
-    print("Bot is running...")
-    app.run_polling()
+    # Add command handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("fake", fake))
+
+    print("Telegram bot is running...")
+    application.run_polling()
 
 
 if __name__ == "__main__":
