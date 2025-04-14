@@ -8,7 +8,7 @@ import httpx
 
 # Replace with your actual OpenAI and Telegram keys
 OPENAI_API_KEY = "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"  
-TELEGRAM_BOT_TOKEN = "7801028142:AAFXqLg_a8MFOen_XZ2dO306QqeZjKRO8CM"
+TELEGRAM_BOT_TOKEN = "7801028142:AAEWRoNyXCjL7U-LgQVT4cSNpzsw0V_THO0"
 
 # Web server to keep alive
 flask_app = Flask('')
