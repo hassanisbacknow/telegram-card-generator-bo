@@ -34,10 +34,10 @@ def ping_self():
     def loop():
         while True:
             try:
-                httpx.get("https://telegram-card-generator-bo.onrender.com", timeout=5)
+                httpx.get("https://telegram-card-generator-bo.onrender.com", timeout=30)
             except:
                 pass  # silently ignore errors
-            time.sleep(5)
+            time.sleep(30)
     Thread(target=loop, daemon=True).start()
 
 # Country Flags Dictionary (extended, add more if needed)
@@ -477,7 +477,7 @@ def main():
     ping_self()  # background pinger
     print("Bot is running...")
 
-    application = ApplicationBuilder().token("7654475659:AAEgwmOnin5ojhMQOw9g-SO8lqFYy1Nqv7Y").build()
+    application = ApplicationBuilder().token("7654475659:AAHVShCBWUMyciWtNfbMjxXPlHa2ixW9Cjk").build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
