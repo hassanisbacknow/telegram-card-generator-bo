@@ -351,7 +351,6 @@ def generate_cvv(cvv_input, bin_number):
 
 # --- BIN Lookup function ---
 
-
 async def lookup_bin(bin_number):
     url = f"https://drlabapis.onrender.com/api/bin?bin={bin_number[:6]}"
     try:
@@ -377,7 +376,6 @@ async def lookup_bin(bin_number):
     except Exception as e:
         print(f"[DEBUG] BIN Lookup Error: {e}")
 
-    # Always return safe fallback
     return {
         "bank": "NOT FOUND",
         "card_type": "NOT FOUND",
@@ -386,11 +384,6 @@ async def lookup_bin(bin_number):
         "country": "NOT FOUND",
         "flag": "🏳️"
     }
-                else:
-                    return {"error": f"API error: {response.status}"}
-    except Exception as e:
-        print(f"[DEBUG] BIN Lookup Error: {e}")
-        return {"error": str(e)}
         
         # --- Telegram Handlers ---
 
@@ -493,7 +486,7 @@ def main():
     ping_self()  # background pinger
     print("Bot is running...")
 
-    application = ApplicationBuilder().token("7654475659:AAGLU2AFsPEK0spsMMIJOuNxMNE3eEktY9A").build()
+    application = ApplicationBuilder().token("7654475659:AAHLkhT8MGqsCbkEhZbjjQvXKClMW8EZ9l4").build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
