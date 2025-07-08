@@ -359,28 +359,31 @@ async def lookup_bin(bin_number):
                 print(f"[DEBUG] BIN API Status: {response.status}")
                 raw_data = await response.text()
                 print(f"[DEBUG] BIN API Response: {raw_data}")
-                
-                if response.status == 200 and "application/json" in response.headers.get("Content-Type", ""):
-                    bin_data = await response.json()
-                    country_name = bin_data.get('country', 'NOT FOUND').upper()
-                    return {
-                        "bank": bin_data.get('issuer', 'NOT FOUND'),
-                        "card_type": bin_data.get('type', 'NOT FOUND'),
-                        "network": bin_data.get('scheme', 'NOT FOUND'),
-                        "tier": bin_data.get('tier', 'NOT FOUND'),
-                        "country": country_name,
-                        "flag": COUNTRY_FLAGS.get(country_name, "🏳️")
-                    }
 
+                # Check if response is JSON
+                if response.status == 200 and "application/json" in response.headers.get("Content-Type", ""):
+                    try:
+                        bin_data = await response.json()
+                        country_name = bin_data.get('country', 'NOT FOUND').upper()
+                        return {
+                            "bank": bin_data.get('issuer', 'NOT FOUND'),
+                            "card_type": bin_data.get('type', 'NOT FOUND'),
+                            "network": bin_data.get('scheme', 'NOT FOUND'),
+                            "tier": bin_data.get('tier', 'NOT FOUND'),
+                            "country": country_name,
+                            "flag": COUNTRY_FLAGS.get(country_name, "🏳️")
+                        }
+                    except Exception as json_error:
+                        print(f"[DEBUG] JSON decode error: {json_error}")
     except Exception as e:
         print(f"[DEBUG] BIN Lookup Error: {e}")
 
-    # Always return fallback data if anything goes wrong
+    # Always return fallback data
     return {
+        "bank": "NOT FOUND",
         "card_type": "NOT FOUND",
         "network": "NOT FOUND",
         "tier": "NOT FOUND",
-        "bank": "NOT FOUND",
         "country": "NOT FOUND",
         "flag": "🏳️"
     }
