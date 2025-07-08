@@ -40,49 +40,6 @@ def ping_self():
             time.sleep(60)
     Thread(target=loop, daemon=True).start()
 
-# Country Flags Dictionary (unchanged)
-import random
-import httpx
-import re
-import aiohttp
-from flask import Flask
-from threading import Thread
-from telegram import Update
-from telegram.error import Forbidden
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import re
-
-def clean_data(data):
-    # Remove unwanted characters (only allow alphanumeric and space)
-    cleaned_data = re.sub(r'[^a-zA-Z0-9\s]', '', data)
-    return cleaned_data
-
-# Web server to keep alive
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot is online!"
-
-def run_web():
-    app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    t = Thread(target=run_web)
-    t.start()
-
-# Background pinger to keep app awake
-def ping_self():
-    import time
-    def loop():
-        while True:
-            try:
-                httpx.get("https://telegram-card-generator-bo.onrender.com", timeout=60)
-            except:
-                pass  # silently ignore errors
-            time.sleep(60)
-    Thread(target=loop, daemon=True).start()
-
 # Country Flags Dictionary (extended, add more if needed)
 COUNTRY_FLAGS = {
     "ARUBA": "🇦🇼",
@@ -336,8 +293,6 @@ COUNTRY_FLAGS = {
     "ZIMBABWE": "🇿🇼",
 }
 
-
-
 # --- Helper functions ---
 
 def escape_markdown_v2(text):
@@ -371,12 +326,14 @@ def generate_credit_card(bin_number):
     return ''.join(map(str, card_number))
 
 def generate_expiry_date(mm_input, yy_input):
+    # Generate the month
     mm = ''.join(str(random.randint(0, 9)) if x == 'x' else x for x in mm_input)
     if not mm:
-        mm = f"{random.randint(1, 12):02d}"
+        mm = f"{random.randint(1, 12):02d}"  # Ensure two-digit format
     mm = f"{random.randint(1, 12):02d}" if int(mm) < 1 or int(mm) > 12 else mm
     mm = f"{int(mm):02d}"
 
+    # Generate the year
     yy = ''.join(str(random.randint(0, 9)) if x == 'x' else x for x in yy_input)
     if not yy:
         yy = str(random.randint(26, 32))
@@ -384,7 +341,7 @@ def generate_expiry_date(mm_input, yy_input):
         yy = "20" + yy
     yy = str(random.randint(2026, 2032)) if int(yy) < 2026 or int(yy) > 2032 else yy
 
-    return mm, yy
+    return mm,yy
 
 def generate_cvv(cvv_input, bin_number):
     if cvv_input.lower() != "rnd" and 'x' not in cvv_input:
@@ -393,6 +350,7 @@ def generate_cvv(cvv_input, bin_number):
     return ''.join(str(random.randint(0, 9)) for _ in range(cvv_length))
 
 # --- BIN Lookup function ---
+
 
 async def lookup_bin(bin_number):
     url = f"https://drlabapis.onrender.com/api/bin?bin={bin_number[:6]}"
@@ -403,23 +361,23 @@ async def lookup_bin(bin_number):
                 raw_data = await response.text()
                 print(f"[DEBUG] BIN API Response: {raw_data}")
 
-                if response.status == 200 and "application/json" in response.headers.get("Content-Type", ""):
-                    try:
-                        bin_data = await response.json()
-                        country_name = bin_data.get('country', 'NOT FOUND').upper()
-                        return {
-                            "bank": bin_data.get('issuer', 'NOT FOUND'),
-                            "card_type": bin_data.get('type', 'NOT FOUND'),
-                            "network": bin_data.get('scheme', 'NOT FOUND'),
-                            "tier": bin_data.get('tier', 'NOT FOUND'),
-                            "country": country_name,
-                            "flag": COUNTRY_FLAGS.get(country_name, "🏳️")
-                        }
-                    except Exception as json_error:
-                        print(f"[DEBUG] JSON decode error: {json_error}")
+                try:
+                    bin_data = await response.json()
+                    country_name = bin_data.get('country', 'NOT FOUND').upper()
+                    return {
+                        "bank": bin_data.get('issuer', 'NOT FOUND'),
+                        "card_type": bin_data.get('type', 'NOT FOUND'),
+                        "network": bin_data.get('scheme', 'NOT FOUND'),
+                        "tier": bin_data.get('tier', 'NOT FOUND'),
+                        "country": country_name,
+                        "flag": COUNTRY_FLAGS.get(country_name, "🏳️")
+                    }
+                except Exception as json_error:
+                    print(f"[DEBUG] JSON decode failed: {json_error}")
     except Exception as e:
         print(f"[DEBUG] BIN Lookup Error: {e}")
 
+    # Always return safe fallback
     return {
         "bank": "NOT FOUND",
         "card_type": "NOT FOUND",
@@ -428,8 +386,13 @@ async def lookup_bin(bin_number):
         "country": "NOT FOUND",
         "flag": "🏳️"
     }
-
-# --- Telegram Handlers ---
+                else:
+                    return {"error": f"API error: {response.status}"}
+    except Exception as e:
+        print(f"[DEBUG] BIN Lookup Error: {e}")
+        return {"error": str(e)}
+        
+        # --- Telegram Handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -439,9 +402,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def process_gen_command(update: Update, user_input: str):
     try:
-        user_input = user_input.replace("/gen", "").replace(".gen", "").strip()
         user_input = user_input.replace('/', '|')
-
         input_parts = user_input.split(' ')
         card_info = input_parts[0].strip()
         quantity_str = input_parts[1].strip() if len(input_parts) > 1 else "10"
@@ -464,8 +425,19 @@ async def process_gen_command(update: Update, user_input: str):
             await update.message.reply_text("Max quantity is 100.")
             return
 
+        # Lookup BIN info
         bin_info = await lookup_bin(bin_number)
+        if "error" in bin_info:
+            bin_info = {
+                "card_type": "NOT FOUND",
+                "network": "NOT FOUND",
+                "tier": "NOT FOUND",
+                "bank": "NOT FOUND",
+                "country": "NOT FOUND",
+                "flag": "🏳️"
+            }
 
+        # Escape for MarkdownV2
         issuer = escape_markdown_v2(bin_info.get('bank'))
         card_type = escape_markdown_v2(bin_info.get('card_type'))
         network = escape_markdown_v2(bin_info.get('network'))
@@ -473,6 +445,7 @@ async def process_gen_command(update: Update, user_input: str):
         country = escape_markdown_v2(bin_info.get('country'))
         flag = bin_info.get('flag', '🏳️')
 
+        # Generate cards
         ccs = []
         for _ in range(quantity):
             card_number = generate_credit_card(bin_number)
@@ -482,19 +455,20 @@ async def process_gen_command(update: Update, user_input: str):
 
         ccs_text = '\n'.join([f"`{cc}`" for cc in ccs])
 
+        # Build response
         response = (
-            f"*𝐁𝐈𝐍* ⇾ {escape_markdown_v2(bin_number[:6])}\n"
-            f"*𝐀𝐌𝐎𝐔𝐍𝐓* ⇾ {quantity}\n"
-            f"━━━━━━━━━━━━━━\n"
-            f"{ccs_text}\n"
-            f"━━━━━━━━━━━━━━\n"
-            f"*𝗜𝗻𝗳𝗼:* {card_type} \- {network} \- {tier}\n"
-            f"*𝐈𝐬𝐬𝐮𝐞𝐫:* {issuer}\n"
-            f"*𝗖𝗼𝘂𝗻𝘁𝗿𝘆:* {country} {flag}\n"
-            f"━━━━━━━━━━━━━━\n"
-            f"*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑*: @hassanontelegram\n"
-            f"*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*: @tricks\_era"
-        )
+    f"*𝐁𝐈𝐍* ⇾ {escape_markdown_v2(bin_number[:6])}\n"
+    f"*𝐀𝐌𝐎𝐔𝐍𝐓* ⇾ {quantity}\n"
+    f"━━━━━━━━━━━━━━\n"
+    f"{ccs_text}\n"
+    f"━━━━━━━━━━━━━━\n"
+    f"*𝗜𝗻𝗳𝗼:* {card_type} \\- {network} \\- {tier}\n"
+    f"*𝐈𝐬𝐬𝐮𝐞𝐫:* {issuer}\n"
+    f"*𝗖𝗼𝘂𝗻𝘁𝗿𝘆:* {country} {flag}\n"
+    f"━━━━━━━━━━━━━━\n"
+    f"*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑*: @hassanontelegram\n"
+    f"*𝐃𝐄𝐕𝐄𝐋𝐎𝐏𝐄𝐑 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*: @tricks\\_era"
+)
 
         await update.message.reply_text(response, parse_mode="MarkdownV2")
 
@@ -512,14 +486,14 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def gen_with_dot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text[4:].strip()
     await process_gen_command(update, user_input)
-
-# --- Main ---
+    
+    # --- Main ---
 def main():
     keep_alive()
-    ping_self()
+    ping_self()  # background pinger
     print("Bot is running...")
 
-    application = ApplicationBuilder().token("7654475659:AAG2TcL1qSWAEG89nm-7-J8kDnSiE5zup8I").build()
+    application = ApplicationBuilder().token("7654475659:AAGLU2AFsPEK0spsMMIJOuNxMNE3eEktY9A").build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("gen", gen))
