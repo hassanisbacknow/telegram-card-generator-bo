@@ -34,10 +34,10 @@ def ping_self():
     def loop():
         while True:
             try:
-                httpx.get("https://telegram-card-generator-bo.onrender.com", timeout=30)
+                httpx.get("https://telegram-card-generator-bo.onrender.com", timeout=60)
             except:
                 pass  # silently ignore errors
-            time.sleep(30)
+            time.sleep(60)
     Thread(target=loop, daemon=True).start()
 
 # Country Flags Dictionary (extended, add more if needed)
