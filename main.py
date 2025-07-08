@@ -359,7 +359,8 @@ async def lookup_bin(bin_number):
                 print(f"[DEBUG] BIN API Status: {response.status}")
                 raw_data = await response.text()
                 print(f"[DEBUG] BIN API Response: {raw_data}")
-                if response.status == 200:
+                
+                if response.status == 200 and "application/json" in response.headers.get("Content-Type", ""):
                     bin_data = await response.json()
                     country_name = bin_data.get('country', 'NOT FOUND').upper()
                     return {
@@ -370,11 +371,19 @@ async def lookup_bin(bin_number):
                         "country": country_name,
                         "flag": COUNTRY_FLAGS.get(country_name, "🏳️")
                     }
-                else:
-                    return {"error": f"API error: {response.status}"}
+
     except Exception as e:
         print(f"[DEBUG] BIN Lookup Error: {e}")
-        return {"error": str(e)}
+
+    # Always return fallback data if anything goes wrong
+    return {
+        "card_type": "NOT FOUND",
+        "network": "NOT FOUND",
+        "tier": "NOT FOUND",
+        "bank": "NOT FOUND",
+        "country": "NOT FOUND",
+        "flag": "🏳️"
+    }
         
         # --- Telegram Handlers ---
 
